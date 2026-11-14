@@ -1,0 +1,65 @@
+name: Build signed macOS installers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Sign and notarize the apps
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing signing configuration for $name"
+              exit 1
+            fi
+          done
+          npm run dist:mac -- --config.forceCodeSigning=true
+      - name: Notarize, staple and verify both disk images
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          for arch in arm64 x64; do
+            image="release/Graduation Memories-$(node -p 'require("./package.json").version')-mac-$arch.dmg"
+            test -f "$image"
+            xcrun notarytool submit "$image" --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+            xcrun stapler staple "$image"
+            xcrun stapler validate "$image"
+            hdiutil verify "$image"
+            (
+              mount_dir=$(mktemp -d)
+              trap 'hdiutil detach "$mount_dir" >/dev/null 2>&1 || true; rmdir "$mount_dir"' EXIT
+              hdiutil attach "$image" -readonly -nobrowse -mountpoint "$mount_dir"
+              bundle="$mount_dir/Graduation Memories.app"
+              codesign --verify --deep --strict "$bundle"
+              xcrun stapler validate "$bundle"
+              spctl --assess --type execute --verbose "$bundle"
+            )
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Graduation-Memories-macOS-signed
+          path: release/*.dmg
+          if-no-files-found: error
