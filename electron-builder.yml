@@ -1,0 +1,22 @@
+appId: org.graduationmemories.wall
+productName: Graduation Memories
+directories:
+  output: release
+files:
+  - dist/**/*
+  - electron/**/*
+npmRebuild: false
+mac:
+  target: dmg
+  category: public.app-category.education
+  icon: build/mac-icon.png
+  artifactName: "${productName}-${version}-mac-${arch}.${ext}"
+win:
+  icon: build/icon.ico
+  target: nsis
+  signExecutable: false
+nsis:
+  oneClick: false
+  createDesktopShortcut: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico

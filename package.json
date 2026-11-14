@@ -1,0 +1,33 @@
+{
+  "name": "graduation-memories",
+  "version": "1.0.0",
+  "description": "Offline interactive graduation wall",
+  "author": "Graduation Memories",
+  "main": "electron/main.cjs",
+  "private": true,
+  "scripts": {
+    "dev": "npm run build && electron .",
+    "start": "electron .",
+    "build": "tsc --noEmit && vite build",
+    "dist": "npm run build && electron-builder --win nsis",
+    "dist:mac": "npm run build && electron-builder --mac dmg --arm64 --x64 --publish never"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "motion": "^12.0.0",
+    "papaparse": "^5.5.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.4.0",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.3.0"
+  }
+}
